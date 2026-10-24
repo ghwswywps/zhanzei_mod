@@ -19,14 +19,24 @@
 | HTTPS | 自带自签证书脚本，满足 File System Access 等安全上下文要求 |
 | 调试端点 | `?debug=1` 页面内调试台 + `POST /__debug` 落盘日志 |
 
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [部署说明.md](部署说明.md) | **Linux 本地部署**全流程：解压（中文名坑）、HTTP/HTTPS、systemd、防火墙、存档位置、FAQ |
+| [桌面版修改器使用说明.md](桌面版修改器使用说明.md) | 桌面版存档修改器：设置游戏位置、改档、备份还原、武将工坊、线上档互转、注意事项 |
+| [安装MOD教程.md](安装MOD教程.md) | 凡人MOD / 自建武将包的安装、游戏内使用（`Ctrl+0`）、卸载、杀软与 Steam 校验的坑 |
+
 ## 目录结构
 
 ```
 .
-├── server.py        # 单文件 HTTP/HTTPS 服务器（仅标准库，无第三方依赖）
-├── start.sh         # 启动脚本（HTTP）
-├── make_cert.sh     # 生成自签 HTTPS 证书
-├── 部署说明.md       # 详细中文部署步骤（推荐先看这个）
+├── server.py                     # 单文件 HTTP/HTTPS 服务器（仅标准库，无第三方依赖）
+├── start.sh                      # 启动脚本（HTTP）
+├── make_cert.sh                  # 生成自签 HTTPS 证书
+├── 部署说明.md                    # Linux 本地部署步骤（推荐先看）
+├── 桌面版修改器使用说明.md        # 修改器怎么用
+├── 安装MOD教程.md                 # MOD 安装 / 使用 / 卸载
 └── README.md
 ```
 
