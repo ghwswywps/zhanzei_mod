@@ -54,6 +54,13 @@ CACHE_OK = {'.webp', '.png', '.jpg', '.jpeg', '.webm', '.mp3', '.ogg',
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def setup(self):
+        super().setup()
+        try:
+            self.connection.settimeout(60)
+        except Exception:
+            pass
+
     protocol_version = 'HTTP/1.1'          # 长连接：首屏几十个资源才不会被 6 并发卡死
 
     def __init__(self, *a, **kw):
@@ -71,7 +78,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().send_error(code, message, explain)
 
     def end_headers(self):
-        ext = os.path.splitext(urllib.parse.urlparse(self.path).path)[1].lower()
+        # 注意：BaseHTTPRequestHandler 在 parse_request 失败时也会走 end_headers，
+        # 那时 self.path 还不存在；早期版本直接取 self.path 会抛 AttributeError，
+        # 把错误响应写坏（客户端表现为超时/连接被重置）。
+        path = getattr(self, 'path', '') or ''
+        ext = os.path.splitext(urllib.parse.urlparse(path).path)[1].lower()
         cc = 'no-store' if (getattr(self, '_no_cache', False) or ext not in CACHE_OK) \
             else 'public, max-age=86400'
         self.send_header('Cache-Control', cc)
@@ -206,15 +217,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    request_queue_size = 128
+
+
+class TLSServer(Server):
+    """HTTPS 专用。
+
+    旧实现是 ctx.wrap_socket(监听socket)：只要有客户端在握手阶段卡住（不发
+    ClientHello 或半开连接），accept 循环就永久阻塞，端口还在 listen 但再也没人
+    接受连接 —— 现象就是 Recv-Q 越堆越多、浏览器一直转圈。
+    这里改成每个连接单独握手，并给底层 socket 设超时。
+    """
+    tls_ctx = None
+
+    def get_request(self):
+        sock, addr = self.socket.accept()
+        try:
+            sock.settimeout(15)
+            return self.tls_ctx.wrap_socket(sock, server_side=True), addr
+        except Exception:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            # OSError 子类会被 socketserver 静默跳过，不会打断 accept 循环
+            raise OSError('tls handshake failed')
 
 
 def serve(port, tls=False):
     bind = os.environ.get('H5_BIND', '0.0.0.0')
-    srv = Server((bind, port), Handler)
     if tls:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(CERT, KEY)
-        srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
+        TLSServer.tls_ctx = ctx
+        srv = TLSServer((bind, port), Handler)
+    else:
+        srv = Server((bind, port), Handler)
     scheme = 'https' if tls else 'http'
     print(' %-5s : %s://<本机IP>:%d/editor.html' % (scheme.upper(), scheme, port))
     srv.serve_forever()
