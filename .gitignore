@@ -1,0 +1,28 @@
+# 忽略：游戏本体资源（本仓库只放部署代码）
+*.nw
+*.zip
+index.html
+scripts/
+images/
+fonts/
+media/
+m4a/
+audio/
+*.json
+*.webp
+*.webm
+*.otf
+*.wasm
+portraits/
+debug/
+cert.pem
+key.pem
+__pycache__/
+*.pyc
+
+# 但保留本仓库需要的
+!README.md
+!部署说明.md
+!server.py
+!start.sh
+!make_cert.sh
